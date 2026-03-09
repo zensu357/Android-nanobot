@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Nanobot</string>
+    <string name="chat_title">Nanobot Chat</string>
+    <string name="settings_title">Settings</string>
+    <string name="send">Send</string>
+    <string name="message_hint">Ask Nanobot anything...</string>
+    <string name="empty_chat">Start with a prompt to build the first session.</string>
+    <string name="save_settings">Save</string>
+    <string name="open_settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="api_key">API Key</string>
+    <string name="base_url">Base URL</string>
+    <string name="model_name">Model</string>
+    <string name="system_prompt">System Prompt</string>
+    <string name="default_reminder_title">Nanobot Reminder</string>
+    <string name="reminder_channel_name">Nanobot Reminders</string>
+    <string name="reminder_channel_description">Reminder notifications scheduled by Nanobot</string>
+    <string name="heartbeat_channel_name">Nanobot Heartbeat</string>
+    <string name="heartbeat_channel_description">Autonomous heartbeat execution updates from Nanobot</string>
+    <string name="heartbeat_executed_title">Heartbeat Executed</string>
+    <string name="heartbeat_executed_fallback">Nanobot completed a heartbeat task.</string>
+    <string name="heartbeat_failed_title">Heartbeat Failed</string>
+    <string name="heartbeat_failed_fallback">Nanobot could not finish the heartbeat task.</string>
+</resources>

@@ -1,0 +1,339 @@
+package com.example.nanobot.feature.settings
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.Button
+import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    state: SettingsUiState,
+    onProviderChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onBaseUrlChange: (String) -> Unit,
+    onModelChange: (String) -> Unit,
+    onMaxTokensChange: (String) -> Unit,
+    onMaxToolIterationsChange: (String) -> Unit,
+    onMemoryWindowChange: (String) -> Unit,
+    onReasoningEffortChange: (String) -> Unit,
+    onEnableToolsChange: (Boolean) -> Unit,
+    onEnableMemoryChange: (Boolean) -> Unit,
+    onEnableBackgroundWorkChange: (Boolean) -> Unit,
+    onHeartbeatEnabledChange: (Boolean) -> Unit,
+    onHeartbeatInstructionsChange: (String) -> Unit,
+    onWebSearchApiKeyChange: (String) -> Unit,
+    onWebProxyChange: (String) -> Unit,
+    onRestrictToWorkspaceChange: (Boolean) -> Unit,
+    onPresetChange: (String) -> Unit,
+    onSkillToggle: (String, Boolean) -> Unit,
+    onDraftMcpLabelChange: (String) -> Unit,
+    onDraftMcpEndpointChange: (String) -> Unit,
+    onMcpServerToggle: (String, Boolean) -> Unit,
+    onAddMcpServer: () -> Unit,
+    onRemoveMcpServer: (String) -> Unit,
+    onRefreshMcpTools: () -> Unit,
+    onSystemPromptChange: (String) -> Unit,
+    onOpenMemory: () -> Unit,
+    onOpenTools: () -> Unit,
+    onResetClick: () -> Unit,
+    onSaveClick: () -> Unit,
+    onBackClick: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    TextButton(onClick = onBackClick) {
+                        Text("Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Provider Configuration",
+                style = MaterialTheme.typography.headlineSmall
+            )
+            OutlinedTextField(
+                value = state.providerType,
+                onValueChange = onProviderChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Provider") },
+                supportingText = { Text("Use openai_compatible, openrouter, or azure_openai") }
+            )
+            OutlinedTextField(
+                value = state.apiKey,
+                onValueChange = onApiKeyChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("API Key") }
+            )
+            OutlinedTextField(
+                value = state.baseUrl,
+                onValueChange = onBaseUrlChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Base URL") }
+            )
+            OutlinedTextField(
+                value = state.model,
+                onValueChange = onModelChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Model") }
+            )
+            OutlinedTextField(
+                value = state.maxTokens,
+                onValueChange = onMaxTokensChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Max Tokens") }
+            )
+            OutlinedTextField(
+                value = state.maxToolIterations,
+                onValueChange = onMaxToolIterationsChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Max Tool Iterations") }
+            )
+            OutlinedTextField(
+                value = state.memoryWindow,
+                onValueChange = onMemoryWindowChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Memory Window") }
+            )
+            OutlinedTextField(
+                value = state.reasoningEffort,
+                onValueChange = onReasoningEffortChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Reasoning Effort") }
+            )
+            OutlinedTextField(
+                value = state.presetId,
+                onValueChange = onPresetChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Prompt Preset") },
+                supportingText = { Text("Available: ${state.availablePresets.joinToString()}") }
+            )
+            Text(
+                text = "Skills",
+                style = MaterialTheme.typography.titleMedium
+            )
+            state.skillOptions.forEach { skill ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SettingToggleRow(
+                            label = skill.title,
+                            checked = skill.checked,
+                            onCheckedChange = { onSkillToggle(skill.id, it) }
+                        )
+                        Text(
+                            text = skill.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (skill.tags.isNotEmpty()) {
+                            Text(
+                                text = "Tags: ${skill.tags.joinToString()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+            Text(
+                text = "MCP Servers",
+                style = MaterialTheme.typography.titleMedium
+            )
+            OutlinedTextField(
+                value = state.draftMcpLabel,
+                onValueChange = onDraftMcpLabelChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("MCP Server Label") }
+            )
+            OutlinedTextField(
+                value = state.draftMcpEndpoint,
+                onValueChange = onDraftMcpEndpointChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("MCP Server Endpoint") },
+                supportingText = { Text("Remote HTTP/HTTPS endpoint for dynamic MCP tool discovery via JSON-RPC") }
+            )
+            Button(
+                onClick = onAddMcpServer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Add MCP Server")
+            }
+            OutlinedButton(
+                onClick = onRefreshMcpTools,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Refresh MCP Tools")
+            }
+            state.mcpStatus?.takeIf { it.isNotBlank() }?.let { status ->
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            state.mcpServers.forEach { server ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SettingToggleRow(
+                            label = server.label,
+                            checked = server.enabled,
+                            onCheckedChange = { onMcpServerToggle(server.id, it) }
+                        )
+                        Text(
+                            text = server.endpoint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Discovered tools: ${server.discoveredToolCount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = { onRemoveMcpServer(server.id) }) {
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
+            SettingToggleRow(
+                label = "Enable Tools",
+                checked = state.enableTools,
+                onCheckedChange = onEnableToolsChange
+            )
+            SettingToggleRow(
+                label = "Enable Memory",
+                checked = state.enableMemory,
+                onCheckedChange = onEnableMemoryChange
+            )
+            SettingToggleRow(
+                label = "Enable Background Work",
+                checked = state.enableBackgroundWork,
+                onCheckedChange = onEnableBackgroundWorkChange
+            )
+            SettingToggleRow(
+                label = "Enable Heartbeat",
+                checked = state.heartbeatEnabled,
+                onCheckedChange = onHeartbeatEnabledChange
+            )
+            OutlinedTextField(
+                value = state.heartbeatInstructions,
+                onValueChange = onHeartbeatInstructionsChange,
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 6,
+                label = { Text("Heartbeat Instructions") },
+                supportingText = {
+                    Text("Multi-line local instruction source used by the heartbeat decider.")
+                }
+            )
+            SettingToggleRow(
+                label = "Restrict To Workspace",
+                checked = state.restrictToWorkspace,
+                onCheckedChange = onRestrictToWorkspaceChange
+            )
+            Text(
+                text = "Workspace-restricted mode keeps local read-only tools, local orchestration tools, and workspace sandbox read/write tools available while blocking external web access, dynamic MCP tools, and non-workspace side effects.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = state.webSearchApiKey,
+                onValueChange = onWebSearchApiKeyChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Web Search API Key") }
+            )
+            OutlinedTextField(
+                value = state.webProxy,
+                onValueChange = onWebProxyChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Web Proxy") }
+            )
+            OutlinedTextField(
+                value = state.systemPrompt,
+                onValueChange = onSystemPromptChange,
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 5,
+                label = { Text("Custom User Instructions") }
+            )
+            Button(
+                onClick = onOpenMemory,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Open Memory")
+            }
+            Button(
+                onClick = onOpenTools,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Open Tools")
+            }
+            OutlinedButton(
+                onClick = onResetClick,
+                enabled = state.isDirty && !state.isSaving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Reset Draft")
+            }
+            Button(
+                onClick = onSaveClick,
+                enabled = state.isDirty && !state.isSaving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (state.isSaving) "Saving..." else "Save")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}

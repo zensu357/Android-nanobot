@@ -1,0 +1,53 @@
+.gradle/
+.kotlin/
+.vscode/
+.idea/
+build/
+app/build/
+
+# Local machine / SDK config
+local.properties
+AGENTS.md
+
+# Local secrets and signing material
+opencode.json
+keystore.properties
+google-services.json
+*.p12
+*.key
+*.env
+.env
+.env.*
+
+# Bundled local Gradle installs
+gradle-8.10.2/
+
+# Signing files
+*.jks
+*.keystore
+
+# IDE metadata
+*.iml
+
+# Local captures and diagnostics
+captures/
+*.log
+*.hprof
+*.orig
+
+# Exported build artifacts
+*.apk
+*.aab
+*.apks
+
+# Local database files
+*.db
+*.db-wal
+*.db-shm
+
+# OS files
+.DS_Store
+Thumbs.db
+count-code-lines.bat
+README.md
+README.zh-CN.md
