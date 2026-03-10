@@ -128,6 +128,15 @@ fun AppNavGraph() {
             val state = viewModel.uiState.collectAsStateWithLifecycle()
             MemoryScreen(
                 state = state.value,
+                onEditFact = { factId ->
+                    state.value.facts.firstOrNull { it.id == factId }?.let(viewModel::startEditingFact)
+                },
+                onDeleteFact = viewModel::deleteFact,
+                onDeleteSummary = viewModel::deleteSummary,
+                onRebuildSummary = viewModel::rebuildSummary,
+                onFactDraftChange = viewModel::updateFactDraft,
+                onSaveFactEdit = viewModel::saveFactEdit,
+                onCancelFactEdit = viewModel::cancelEditingFact,
                 onBackClick = { navController.popBackStack() }
             )
         }

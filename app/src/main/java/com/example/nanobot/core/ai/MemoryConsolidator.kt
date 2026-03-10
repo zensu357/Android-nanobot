@@ -1,5 +1,6 @@
 package com.example.nanobot.core.ai
 
+import com.example.nanobot.core.memory.MemoryFactGovernance
 import com.example.nanobot.core.model.AgentConfig
 import com.example.nanobot.core.model.ChatMessage
 import com.example.nanobot.core.model.LlmChatRequest
@@ -23,6 +24,20 @@ class MemoryConsolidator @Inject constructor(
     private val parserJson = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
+    }
+
+    suspend fun shouldConsolidate(
+        sessionId: String,
+        historySize: Int,
+        config: AgentConfig,
+        minMessages: Int,
+        minNewMessagesDelta: Int
+    ): Boolean {
+        if (!config.enableMemory) return false
+        if (historySize < minMessages) return false
+
+        val existingSummaryCount = getSummarySourceMessageCount(sessionId)
+        return existingSummaryCount == null || historySize - existingSummaryCount >= minNewMessagesDelta
     }
 
     suspend fun consolidate(sessionId: String, history: List<ChatMessage>, config: AgentConfig): Boolean {
@@ -80,9 +95,13 @@ class MemoryConsolidator @Inject constructor(
 
     suspend fun buildMemoryContext(sessionId: String): String? {
         val summary = memoryRepository.getSummaryForSession(sessionId)?.summary
-        val facts = memoryRepository.getFacts().take(5).map { it.fact }
+        val sessionFacts = memoryRepository.getFactsForSession(sessionId).take(3).map { it.fact }
+        val longTermFacts = memoryRepository.getFacts()
+            .filter { it.sourceSessionId != sessionId }
+            .take(5)
+            .map { it.fact }
 
-        if (summary.isNullOrBlank() && facts.isEmpty()) {
+        if (summary.isNullOrBlank() && sessionFacts.isEmpty() && longTermFacts.isEmpty()) {
             return null
         }
 
@@ -92,10 +111,15 @@ class MemoryConsolidator @Inject constructor(
                 appendLine("Session summary:")
                 appendLine(summary)
             }
-            if (facts.isNotEmpty()) {
+            if (sessionFacts.isNotEmpty()) {
                 appendLine()
-                appendLine("User facts:")
-                facts.forEach { appendLine("- $it") }
+                appendLine("Current session facts:")
+                sessionFacts.forEach { appendLine("- $it") }
+            }
+            if (longTermFacts.isNotEmpty()) {
+                appendLine()
+                appendLine("Long-term user facts:")
+                longTermFacts.forEach { appendLine("- $it") }
             }
         }.trim()
     }
@@ -121,25 +145,45 @@ class MemoryConsolidator @Inject constructor(
             )
         }
 
-        val existingNormalized = existingFacts.map { normalizeFact(it.fact) }.toMutableSet()
+        val now = System.currentTimeMillis()
+        val mutableFacts = existingFacts.toMutableList()
+        val existingByNormalized = existingFacts.associateBy { normalizeFact(it.fact) }.toMutableMap()
         result.candidateFacts
             .map { it.trim() }
             .filter { it.length >= 8 }
             .forEach { fact ->
                 val normalized = normalizeFact(fact)
-                if (normalized.isNotBlank() && normalized !in existingNormalized) {
-                    existingNormalized += normalized
+                if (normalized.isBlank()) return@forEach
+
+                val existing = existingByNormalized[normalized]
+                    ?: MemoryFactGovernance.findReplacementCandidate(mutableFacts, fact)
+                if (existing != null) {
+                    val updatedFact = existing.copy(
+                        fact = fact.take(220),
+                        sourceSessionId = sessionId,
+                        updatedAt = now
+                    )
+                    mutableFacts.removeAll { it.id == existing.id }
+                    mutableFacts += updatedFact
+                    existingByNormalized.remove(normalizeFact(existing.fact))
+                    existingByNormalized[normalized] = updatedFact
+                    memoryRepository.upsertFact(updatedFact)
+                } else {
+                    val newFact = MemoryFact(
+                        id = UUID.randomUUID().toString(),
+                        fact = fact.take(220),
+                        sourceSessionId = sessionId,
+                        createdAt = now,
+                        updatedAt = now
+                    )
+                    mutableFacts += newFact
+                    existingByNormalized[normalized] = newFact
                     memoryRepository.upsertFact(
-                        MemoryFact(
-                            id = UUID.randomUUID().toString(),
-                            fact = fact.take(220),
-                            sourceSessionId = sessionId,
-                            createdAt = System.currentTimeMillis(),
-                            updatedAt = System.currentTimeMillis()
-                        )
+                        newFact
                     )
                 }
             }
+        memoryRepository.pruneFacts(MAX_MEMORY_FACTS)
     }
 
     private fun parseResult(raw: String): MemoryConsolidationResult? {
@@ -149,4 +193,8 @@ class MemoryConsolidator @Inject constructor(
     }
 
     private fun normalizeFact(value: String): String = value.trim().lowercase()
+
+    private companion object {
+        const val MAX_MEMORY_FACTS = 200
+    }
 }

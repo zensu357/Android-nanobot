@@ -1,6 +1,8 @@
 package com.example.nanobot.domain.usecase
 
-import com.example.nanobot.core.ai.AgentOrchestrator
+import com.example.nanobot.core.ai.AgentTurnRunner
+import com.example.nanobot.core.ai.MemoryRefreshScheduler
+import com.example.nanobot.core.ai.NoOpMemoryRefreshScheduler
 import com.example.nanobot.core.model.AgentConfig
 import com.example.nanobot.core.model.AgentProgressEvent
 import com.example.nanobot.core.model.AgentRunContext
@@ -12,7 +14,8 @@ import javax.inject.Inject
 
 class SendMessageUseCase @Inject constructor(
     private val sessionRepository: SessionRepository,
-    private val agentOrchestrator: AgentOrchestrator
+    private val agentTurnRunner: AgentTurnRunner,
+    private val memoryRefreshScheduler: MemoryRefreshScheduler = NoOpMemoryRefreshScheduler
 ) {
     suspend operator fun invoke(
         input: String,
@@ -31,7 +34,7 @@ class SendMessageUseCase @Inject constructor(
 
         sessionRepository.saveMessage(userMessage)
 
-        val turnResult = agentOrchestrator.runTurn(
+        val turnResult = agentTurnRunner.runTurn(
             sessionId = session.id,
             history = existingMessages,
             userInput = input,
@@ -44,6 +47,7 @@ class SendMessageUseCase @Inject constructor(
         for (message in turnResult.newMessages) {
             sessionRepository.saveMessage(message)
         }
+        memoryRefreshScheduler.request(session.id, config)
         sessionRepository.touchSession(
             session.copy(title = input.take(24).ifBlank { "New Chat" }),
             makeCurrent = true

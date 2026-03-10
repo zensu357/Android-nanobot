@@ -1,7 +1,9 @@
 package com.example.nanobot.core.tools.impl
 
+import com.example.nanobot.core.memory.MemorySearchScorer
 import com.example.nanobot.core.model.AgentConfig
 import com.example.nanobot.core.model.AgentRunContext
+import com.example.nanobot.core.model.MemorySummary
 import com.example.nanobot.core.tools.AgentTool
 import com.example.nanobot.core.tools.ToolAccessCategory
 import com.example.nanobot.domain.repository.MemoryRepository
@@ -19,7 +21,7 @@ class MemoryLookupTool @Inject constructor(
     private val memoryRepository: MemoryRepository
 ) : AgentTool {
     override val name: String = "memory_lookup"
-    override val description: String = "Searches saved memory facts and summaries by simple keyword matching"
+    override val description: String = "Searches saved memory facts and summaries with ranked keyword matching"
     override val accessCategory: ToolAccessCategory = ToolAccessCategory.LOCAL_READ_ONLY
     override val availabilityHint: String = "Best used when memory is enabled"
     override val parametersSchema: JsonObject = buildJsonObject {
@@ -39,28 +41,64 @@ class MemoryLookupTool @Inject constructor(
             return "The 'query' field is required for memory_lookup."
         }
 
-        val lowerQuery = query.lowercase()
-        val facts = memoryRepository.getFacts()
-            .filter { it.fact.lowercase().contains(lowerQuery) }
-            .take(5)
+        val preferredSessionId = runContext.sessionId
+        val facts = memoryRepository.getFactsForQuery(query)
+            .sortedByDescending { fact ->
+                MemorySearchScorer.score(
+                    query = query,
+                    text = fact.fact,
+                    updatedAt = fact.updatedAt,
+                    sourceSessionId = fact.sourceSessionId,
+                    preferredSessionId = preferredSessionId
+                )
+            }
+            .take(6)
         val summaries = memoryRepository.observeSummariesSnapshot()
-            .filter { it.summary.lowercase().contains(lowerQuery) }
+            .map { summary ->
+                summary to MemorySearchScorer.score(
+                    query = query,
+                    text = summary.summary,
+                    updatedAt = summary.updatedAt,
+                    sourceSessionId = summary.sessionId,
+                    preferredSessionId = preferredSessionId
+                )
+            }
+            .filter { (_, score) -> score > 0 }
+            .sortedByDescending { (_, score) -> score }
+            .map { (summary, _) -> summary }
             .take(3)
 
         if (facts.isEmpty() && summaries.isEmpty()) {
             return "No memory entries matched '$query'."
         }
 
+        val sessionFacts = facts.filter { it.sourceSessionId == preferredSessionId }
+        val otherFacts = facts.filterNot { it.sourceSessionId == preferredSessionId }
+        val sessionSummaries = summaries.filter { it.sessionId == preferredSessionId }
+        val otherSummaries = summaries.filterNot { it.sessionId == preferredSessionId }
+
         return buildString {
-            if (facts.isNotEmpty()) {
-                appendLine("Matching facts:")
-                facts.forEach { appendLine("- ${it.fact.take(180)}") }
-            }
-            if (summaries.isNotEmpty()) {
+            appendSummarySection("Current session summaries", sessionSummaries)
+            if (sessionFacts.isNotEmpty()) {
                 if (isNotEmpty()) appendLine()
-                appendLine("Matching summaries:")
-                summaries.forEach { appendLine("- ${it.summary.take(220)}") }
+                appendLine("Current session facts:")
+                sessionFacts.forEach { appendLine("- ${it.fact.take(180)}") }
+            }
+            if (otherFacts.isNotEmpty()) {
+                if (isNotEmpty()) appendLine()
+                appendLine("Other matching facts:")
+                otherFacts.forEach { appendLine("- ${it.fact.take(180)}") }
+            }
+            if (otherSummaries.isNotEmpty()) {
+                if (isNotEmpty()) appendLine()
+                appendSummarySection("Other matching summaries", otherSummaries)
             }
         }.trim()
+    }
+
+    private fun StringBuilder.appendSummarySection(title: String, summaries: List<MemorySummary>) {
+        if (summaries.isEmpty()) return
+        appendLine(title)
+        summaries.forEach { appendLine("- ${it.summary.take(220)}") }
     }
 }

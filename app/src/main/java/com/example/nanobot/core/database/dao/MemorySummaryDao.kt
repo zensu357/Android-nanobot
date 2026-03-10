@@ -15,6 +15,9 @@ interface MemorySummaryDao {
     @Query("SELECT * FROM memory_summaries WHERE sessionId = :sessionId LIMIT 1")
     suspend fun getSummaryForSession(sessionId: String): MemorySummaryEntity?
 
+    @Query("DELETE FROM memory_summaries WHERE sessionId = :sessionId")
+    suspend fun deleteBySessionId(sessionId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(summary: MemorySummaryEntity)
 }

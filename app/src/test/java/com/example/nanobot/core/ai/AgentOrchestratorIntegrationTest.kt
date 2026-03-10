@@ -300,6 +300,8 @@ class AgentOrchestratorIntegrationTest {
 
         override suspend fun getFacts(): List<MemoryFact> = emptyList()
 
+        override suspend fun getFactsForSession(sessionId: String): List<MemoryFact> = emptyList()
+
         override suspend fun getAllSummaries(): List<MemorySummary> = emptyList()
 
         override suspend fun getFactsForQuery(query: String): List<MemoryFact> = emptyList()
@@ -307,6 +309,12 @@ class AgentOrchestratorIntegrationTest {
         override suspend fun observeSummariesSnapshot(): List<MemorySummary> = emptyList()
 
         override suspend fun getSummaryForSession(sessionId: String): MemorySummary? = null
+
+        override suspend fun deleteFact(factId: String) = Unit
+
+        override suspend fun deleteSummary(sessionId: String) = Unit
+
+        override suspend fun pruneFacts(maxFacts: Int) = Unit
 
         override suspend fun upsertFact(fact: MemoryFact) = Unit
 

@@ -14,10 +14,58 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class MemoryConsolidatorTest {
+    @Test
+    fun shouldConsolidateWhenNoSummaryExistsAndEnoughMessages() = runTest {
+        val repository = FakeMemoryRepository()
+        val consolidator = MemoryConsolidator(
+            memoryRepository = repository,
+            chatRepository = FakeChatRepository(),
+            memoryPromptBuilder = MemoryPromptBuilder()
+        )
+
+        val result = consolidator.shouldConsolidate(
+            sessionId = "session-1",
+            historySize = 4,
+            config = AgentConfig(enableMemory = true),
+            minMessages = 4,
+            minNewMessagesDelta = 2
+        )
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun shouldNotConsolidateWhenNewMessageDeltaIsTooSmall() = runTest {
+        val repository = FakeMemoryRepository().apply {
+            summary = MemorySummary(
+                sessionId = "session-1",
+                summary = "Existing summary",
+                updatedAt = 123L,
+                sourceMessageCount = 5
+            )
+        }
+        val consolidator = MemoryConsolidator(
+            memoryRepository = repository,
+            chatRepository = FakeChatRepository(),
+            memoryPromptBuilder = MemoryPromptBuilder()
+        )
+
+        val result = consolidator.shouldConsolidate(
+            sessionId = "session-1",
+            historySize = 6,
+            config = AgentConfig(enableMemory = true),
+            minMessages = 4,
+            minNewMessagesDelta = 2
+        )
+
+        assertFalse(result)
+    }
+
     @Test
     fun consolidatesSummaryAndFactCandidate() = runTest {
         val repository = FakeMemoryRepository()
@@ -44,6 +92,118 @@ class MemoryConsolidatorTest {
         assertEquals("The user is building an Android assistant.", repository.facts.single().fact)
     }
 
+    @Test
+    fun buildMemoryContextSeparatesSessionAndLongTermFacts() = runTest {
+        val repository = FakeMemoryRepository().apply {
+            summary = MemorySummary(
+                sessionId = "session-1",
+                summary = "Current task is building an Android assistant.",
+                updatedAt = 123L,
+                sourceMessageCount = 8
+            )
+            facts += MemoryFact(
+                id = "fact-1",
+                fact = "The user prefers Kotlin.",
+                sourceSessionId = "session-1",
+                createdAt = 1L,
+                updatedAt = 10L
+            )
+            facts += MemoryFact(
+                id = "fact-2",
+                fact = "The user likes concise answers.",
+                sourceSessionId = "session-2",
+                createdAt = 2L,
+                updatedAt = 20L
+            )
+        }
+        val consolidator = MemoryConsolidator(
+            memoryRepository = repository,
+            chatRepository = FakeChatRepository(),
+            memoryPromptBuilder = MemoryPromptBuilder()
+        )
+
+        val context = consolidator.buildMemoryContext("session-1")
+
+        assertNotNull(context)
+        assertTrue(context.contains("Session summary:"))
+        assertTrue(context.contains("Current session facts:"))
+        assertTrue(context.contains("Long-term user facts:"))
+        assertTrue(context.contains("The user prefers Kotlin."))
+        assertTrue(context.contains("The user likes concise answers."))
+    }
+
+    @Test
+    fun consolidateRefreshesDuplicateFactInsteadOfCreatingNewOne() = runTest {
+        val repository = FakeMemoryRepository().apply {
+            facts += MemoryFact(
+                id = "fact-1",
+                fact = "The user is building an Android assistant.",
+                sourceSessionId = "session-1",
+                createdAt = 1L,
+                updatedAt = 2L
+            )
+        }
+        val consolidator = MemoryConsolidator(
+            memoryRepository = repository,
+            chatRepository = FakeChatRepository(),
+            memoryPromptBuilder = MemoryPromptBuilder()
+        )
+
+        val result = consolidator.consolidate(
+            sessionId = "session-1",
+            history = listOf(
+                ChatMessage(sessionId = "session-1", role = MessageRole.USER, content = "I am building an Android assistant."),
+                ChatMessage(sessionId = "session-1", role = MessageRole.ASSISTANT, content = "Nice."),
+                ChatMessage(sessionId = "session-1", role = MessageRole.USER, content = "Please remember that I prefer Kotlin."),
+                ChatMessage(sessionId = "session-1", role = MessageRole.ASSISTANT, content = "Understood.")
+            ),
+            config = AgentConfig(enableMemory = true)
+        )
+
+        assertTrue(result)
+        assertEquals(1, repository.facts.size)
+        assertEquals("fact-1", repository.facts.single().id)
+    }
+
+    @Test
+    fun consolidateReplacesConflictingPreferenceFact() = runTest {
+        val repository = FakeMemoryRepository().apply {
+            facts += MemoryFact(
+                id = "fact-pref",
+                fact = "The user prefers Kotlin for Android projects.",
+                sourceSessionId = "session-1",
+                createdAt = 1L,
+                updatedAt = 2L
+            )
+        }
+        val consolidator = MemoryConsolidator(
+            memoryRepository = repository,
+            chatRepository = ParameterizedChatRepository(
+                """
+                    {"updatedSummary":"The user now prefers Java for Android projects.","candidateFacts":["The user prefers Java for Android projects."]}
+                """.trimIndent()
+            ),
+            memoryPromptBuilder = MemoryPromptBuilder()
+        )
+
+        val result = consolidator.consolidate(
+            sessionId = "session-2",
+            history = listOf(
+                ChatMessage(sessionId = "session-2", role = MessageRole.USER, content = "I prefer Java for Android projects now."),
+                ChatMessage(sessionId = "session-2", role = MessageRole.ASSISTANT, content = "Understood."),
+                ChatMessage(sessionId = "session-2", role = MessageRole.USER, content = "Please update that preference."),
+                ChatMessage(sessionId = "session-2", role = MessageRole.ASSISTANT, content = "Done.")
+            ),
+            config = AgentConfig(enableMemory = true)
+        )
+
+        assertTrue(result)
+        assertEquals(1, repository.facts.size)
+        assertEquals("fact-pref", repository.facts.single().id)
+        assertEquals("The user prefers Java for Android projects.", repository.facts.single().fact)
+        assertEquals("session-2", repository.facts.single().sourceSessionId)
+    }
+
     private class FakeMemoryRepository : MemoryRepository {
         val facts = mutableListOf<MemoryFact>()
         var summary: MemorySummary? = null
@@ -51,12 +211,29 @@ class MemoryConsolidatorTest {
         override fun observeFacts(): Flow<List<MemoryFact>> = flowOf(facts)
         override fun observeSummaries(): Flow<List<MemorySummary>> = flowOf(listOfNotNull(summary))
         override suspend fun getFacts(): List<MemoryFact> = facts
+        override suspend fun getFactsForSession(sessionId: String): List<MemoryFact> = facts.filter { it.sourceSessionId == sessionId }
         override suspend fun getAllSummaries(): List<MemorySummary> = listOfNotNull(summary)
         override suspend fun getFactsForQuery(query: String): List<MemoryFact> =
             facts.filter { it.fact.contains(query, ignoreCase = true) }
         override suspend fun observeSummariesSnapshot(): List<MemorySummary> = listOfNotNull(summary)
         override suspend fun getSummaryForSession(sessionId: String): MemorySummary? = summary
+        override suspend fun deleteFact(factId: String) {
+            facts.removeAll { it.id == factId }
+        }
+        override suspend fun deleteSummary(sessionId: String) {
+            if (summary?.sessionId == sessionId) {
+                summary = null
+            }
+        }
+        override suspend fun pruneFacts(maxFacts: Int) {
+            if (maxFacts >= 0 && facts.size > maxFacts) {
+                val trimmed = facts.sortedByDescending { it.updatedAt }.take(maxFacts)
+                facts.clear()
+                facts += trimmed
+            }
+        }
         override suspend fun upsertFact(fact: MemoryFact) {
+            facts.removeAll { it.id == fact.id }
             facts += fact
         }
         override suspend fun upsertSummary(summary: MemorySummary) {
@@ -71,6 +248,14 @@ class MemoryConsolidatorTest {
                     {"updatedSummary":"The user is building an Android assistant and prefers Kotlin.","candidateFacts":["The user is building an Android assistant."]}
                 """.trimIndent()
             )
+        }
+    }
+
+    private class ParameterizedChatRepository(
+        private val responseText: String
+    ) : ChatRepository {
+        override suspend fun completeChat(request: LlmChatRequest, config: AgentConfig): ProviderChatResult {
+            return ProviderChatResult(content = responseText)
         }
     }
 }

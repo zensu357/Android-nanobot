@@ -29,11 +29,15 @@ class MemoryConsolidationWorker @AssistedInject constructor(
             val sessions = sessionRepository.observeSessionsSnapshot()
             sessions.forEach { session ->
                 val history = sessionRepository.getMessages(session.id)
-                if (history.size >= MIN_MESSAGES_FOR_CONSOLIDATION) {
-                    val existingSummaryCount = memoryConsolidator.getSummarySourceMessageCount(session.id)
-                    if (existingSummaryCount == null || history.size - existingSummaryCount >= MIN_NEW_MESSAGES_DELTA) {
-                        memoryConsolidator.consolidate(session.id, history, config)
-                    }
+                val shouldConsolidate = memoryConsolidator.shouldConsolidate(
+                    sessionId = session.id,
+                    historySize = history.size,
+                    config = config,
+                    minMessages = MIN_MESSAGES_FOR_CONSOLIDATION,
+                    minNewMessagesDelta = MIN_NEW_MESSAGES_DELTA
+                )
+                if (shouldConsolidate) {
+                    memoryConsolidator.consolidate(session.id, history, config)
                 }
             }
         }.fold(

@@ -5,6 +5,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,14 +15,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -27,7 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +67,15 @@ fun ChatScreen(
     ) { uri ->
         uri?.let(onAttachImage)
     }
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(state.messages.size) {
+        if (state.messages.isNotEmpty()) {
+            listState.animateScrollToItem(state.messages.size - 1)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -68,11 +90,11 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    TextButton(onClick = onOpenSessions) {
-                        Text("Sessions")
+                    IconButton(onClick = onOpenSessions) {
+                        Icon(imageVector = Icons.Default.List, contentDescription = "Sessions")
                     }
-                    TextButton(onClick = onOpenSettings) {
-                        Text("Settings")
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
                     }
                 }
             )
@@ -97,6 +119,7 @@ fun ChatScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -148,34 +171,39 @@ fun ChatScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom
             ) {
+                IconButton(
+                    onClick = {
+                        pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    enabled = !state.isRunning && !state.isSending,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "Attach Image")
+                }
+
                 OutlinedTextField(
                     value = state.input,
                     onValueChange = onMessageChange,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask Nanobot anything...") }
+                    placeholder = { Text("Ask Nanobot anything...") },
+                    maxLines = 6
                 )
-                TextButton(
-                    onClick = {
-                        pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    enabled = !state.isRunning && !state.isSending
-                ) {
-                    Text("Image")
-                }
-                Button(
+
+                IconButton(
                     onClick = if (state.isRunning) onCancelClick else onSendClick,
-                    enabled = !state.isCancelling
+                    enabled = !state.isCancelling,
+                    modifier = Modifier.padding(bottom = 4.dp)
                 ) {
                     if (state.isCancelling) {
                         CircularProgressIndicator(modifier = Modifier.padding(2.dp))
                     } else if (state.isRunning) {
-                        Text("Stop")
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Stop")
                     } else if (state.isSending) {
                         CircularProgressIndicator(modifier = Modifier.padding(2.dp))
                     } else {
-                        Text("Send")
+                        Icon(imageVector = Icons.Default.Send, contentDescription = "Send")
                     }
                 }
             }
@@ -197,18 +225,28 @@ private fun MessageBubble(message: ChatMessage) {
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
         Card(
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            modifier = Modifier.widthIn(max = 300.dp)
         ) {
             Column(
-                modifier = Modifier
-                    .background(containerColor)
-                    .padding(14.dp)
+                modifier = Modifier.padding(14.dp)
             ) {
-                Text(
-                    text = if (isUser) "You" else "Nanobot",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = if (isUser) "You" else "Nanobot",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = message.createdAt.toReadableTime(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Text(
                     text = when {
                         !message.content.isNullOrBlank() -> message.content.orEmpty()
@@ -274,4 +312,9 @@ private fun AttachmentSummary(attachment: Attachment) {
             )
         }
     }
+}
+
+private fun Long.toReadableTime(): String {
+    val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return formatter.format(Date(this))
 }

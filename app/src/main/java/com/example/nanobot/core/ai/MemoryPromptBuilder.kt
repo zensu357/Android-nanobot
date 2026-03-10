@@ -40,6 +40,7 @@ class MemoryPromptBuilder @Inject constructor() {
             appendLine("Rules:")
             appendLine("- Keep updatedSummary concise but specific.")
             appendLine("- candidateFacts must contain only stable, reusable facts.")
+            appendLine("- If a new fact updates an older preference, emit only the newer fact instead of both.")
             appendLine("- If no strong facts exist, return an empty array.")
             appendLine("- Output JSON only. No markdown fences.")
         }.trim()

@@ -2,6 +2,7 @@ package com.example.nanobot.data.repository
 
 import com.example.nanobot.core.database.dao.MemoryFactDao
 import com.example.nanobot.core.database.dao.MemorySummaryDao
+import com.example.nanobot.core.memory.MemorySearchScorer
 import com.example.nanobot.core.model.MemoryFact
 import com.example.nanobot.core.model.MemorySummary
 import com.example.nanobot.data.mapper.toEntity
@@ -27,13 +28,20 @@ class MemoryRepositoryImpl @Inject constructor(
     override suspend fun getFacts(): List<MemoryFact> =
         memoryFactDao.getFacts().map { it.toModel() }
 
+    override suspend fun getFactsForSession(sessionId: String): List<MemoryFact> =
+        memoryFactDao.getFactsForSession(sessionId).map { it.toModel() }
+
     override suspend fun getAllSummaries(): List<MemorySummary> =
         memorySummaryDao.observeSummaries().first().map { it.toModel() }
 
     override suspend fun getFactsForQuery(query: String): List<MemoryFact> {
         val normalized = query.trim().lowercase()
         if (normalized.isBlank()) return emptyList()
-        return getFacts().filter { it.fact.lowercase().contains(normalized) }
+        return getFacts()
+            .map { fact -> fact to MemorySearchScorer.score(normalized, fact.fact, fact.updatedAt, fact.sourceSessionId) }
+            .filter { (_, score) -> score > 0 }
+            .sortedByDescending { (_, score) -> score }
+            .map { (fact, _) -> fact }
     }
 
     override suspend fun observeSummariesSnapshot(): List<MemorySummary> =
@@ -41,6 +49,20 @@ class MemoryRepositoryImpl @Inject constructor(
 
     override suspend fun getSummaryForSession(sessionId: String): MemorySummary? =
         memorySummaryDao.getSummaryForSession(sessionId)?.toModel()
+
+    override suspend fun deleteFact(factId: String) {
+        memoryFactDao.deleteById(factId)
+    }
+
+    override suspend fun deleteSummary(sessionId: String) {
+        memorySummaryDao.deleteBySessionId(sessionId)
+    }
+
+    override suspend fun pruneFacts(maxFacts: Int) {
+        if (maxFacts > 0) {
+            memoryFactDao.pruneToLatest(maxFacts)
+        }
+    }
 
     override suspend fun upsertFact(fact: MemoryFact) {
         memoryFactDao.upsert(fact.toEntity())

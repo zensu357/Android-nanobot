@@ -6,6 +6,8 @@ import com.example.nanobot.core.database.NanobotDatabase
 import com.example.nanobot.core.ai.AgentOrchestrator
 import com.example.nanobot.core.ai.AgentTurnRunner
 import com.example.nanobot.core.ai.HeartbeatDecisionEngine
+import com.example.nanobot.core.ai.MemoryRefreshScheduler
+import com.example.nanobot.core.ai.RealtimeMemoryRefreshScheduler
 import com.example.nanobot.core.mcp.HttpMcpClient
 import com.example.nanobot.core.mcp.McpClient
 import com.example.nanobot.core.mcp.McpRegistry
@@ -83,6 +85,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAgentTurnRunner(orchestrator: AgentOrchestrator): AgentTurnRunner = orchestrator
+
+    @Provides
+    @Singleton
+    fun provideMemoryRefreshScheduler(impl: RealtimeMemoryRefreshScheduler): MemoryRefreshScheduler = impl
 
     @Provides
     @Singleton

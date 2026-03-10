@@ -2,14 +2,17 @@ package com.example.nanobot.feature.memory
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,6 +30,13 @@ import java.util.Locale
 @Composable
 fun MemoryScreen(
     state: MemoryUiState,
+    onEditFact: (String) -> Unit,
+    onDeleteFact: (String) -> Unit,
+    onDeleteSummary: (String) -> Unit,
+    onRebuildSummary: (String) -> Unit,
+    onFactDraftChange: (String) -> Unit,
+    onSaveFactEdit: () -> Unit,
+    onCancelFactEdit: () -> Unit,
     onBackClick: () -> Unit
 ) {
     Scaffold(
@@ -64,10 +74,26 @@ fun MemoryScreen(
                 }
             } else {
                 items(state.summaries, key = { it.sessionId }) { summary ->
+                    val isRebuilding = summary.sessionId in state.rebuildingSessionIds
                     MemoryCard(
                         title = "Session ${summary.sessionId.take(8)}",
                         body = summary.summary,
-                        updatedAt = summary.updatedAt
+                        updatedAt = summary.updatedAt,
+                        metadata = if (summary.sessionId == state.currentSessionId) {
+                            "Current session • ${summary.sourceMessageCount} messages"
+                        } else {
+                            "${summary.sourceMessageCount} messages"
+                        },
+                        actions = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { onRebuildSummary(summary.sessionId) }) {
+                                    Text(if (isRebuilding) "Rebuilding..." else "Rebuild")
+                                }
+                                TextButton(onClick = { onDeleteSummary(summary.sessionId) }) {
+                                    Text("Delete")
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -90,13 +116,54 @@ fun MemoryScreen(
             } else {
                 items(state.facts, key = { it.id }) { fact ->
                     MemoryCard(
-                        title = fact.sourceSessionId?.let { "Fact from ${it.take(8)}" } ?: "User Fact",
+                        title = when {
+                            fact.sourceSessionId == state.currentSessionId -> "Current Session Fact"
+                            fact.sourceSessionId != null -> "Fact from ${fact.sourceSessionId.take(8)}"
+                            else -> "User Fact"
+                        },
                         body = fact.fact,
-                        updatedAt = fact.updatedAt
+                        updatedAt = fact.updatedAt,
+                        metadata = fact.sourceSessionId?.let { "Session ${it.take(8)}" },
+                        actions = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = { onEditFact(fact.id) }) {
+                                    Text("Edit")
+                                }
+                                TextButton(onClick = { onDeleteFact(fact.id) }) {
+                                    Text("Delete")
+                                }
+                            }
+                        }
                     )
                 }
             }
         }
+    }
+
+    val editor = state.editor
+    if (editor != null) {
+        AlertDialog(
+            onDismissRequest = onCancelFactEdit,
+            title = { Text("Edit Memory Fact") },
+            text = {
+                OutlinedTextField(
+                    value = editor.draftText,
+                    onValueChange = onFactDraftChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onSaveFactEdit) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelFactEdit) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -104,7 +171,9 @@ fun MemoryScreen(
 private fun MemoryCard(
     title: String,
     body: String,
-    updatedAt: Long
+    updatedAt: Long,
+    metadata: String? = null,
+    actions: @Composable (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -123,11 +192,19 @@ private fun MemoryCard(
                 text = body,
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (!metadata.isNullOrBlank()) {
+                Text(
+                    text = metadata,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Text(
                 text = "Updated ${updatedAt.toReadableTime()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            actions?.invoke()
         }
     }
 }
