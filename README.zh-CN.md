@@ -100,15 +100,19 @@ git clone https://github.com/zensu357/Android-nanobot.git
 
 - 单模块 Android 应用
 - `core/`：agent loop、provider、tool、MCP、workspace、web access、worker、持久化模型
+- Memory 架构：实时 consolidation、session summary、长期 facts、冲突感知的 fact 治理与排序检索
 - `data/`：repository 实现与 mapper
 - `domain/`：repository 接口与 use case
-- `feature/`：Compose 页面与 ViewModel
+- `feature/`：Compose 页面与 ViewModel，包含内置的 memory facts / summaries 管理 UI
 - `navigation/`：应用路由与导航图
 
 ## 当前能力
 
 - 基于 Room 的持久化聊天会话历史
 - Prompt preset、runtime metadata 与 memory-aware prompting
+- 完成一轮回复后的实时 memory 刷新，并保留周期 worker 兜底
+- 分层 memory 召回：session summary、当前会话 facts、长期用户 facts
+- 冲突感知的 fact 替换、排序式 memory lookup，以及内置的 fact 编辑 / 删除 / summary 重建 UI
 - 由策略层强制执行的 `workspace-restricted mode`
 - `workspace:/` 内的沙箱读写工具
 - 带网络安全约束的公网只读 web 工具

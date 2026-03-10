@@ -19,6 +19,7 @@ English: `DEVELOPMENT_PROGRESS_AND_ROADMAP.md` | 中文：`DEVELOPMENT_PROGRESS_
 - Subagents: isolated child sessions, summary return, artifact path return, parent-session stability, and recursion guard.
 - MCP dynamic tools: remote HTTP JSON-RPC discovery, cached dynamic tool exposure, policy integration, settings management, refresh retention on partial failure, and endpoint validation.
 - Multimodal image baseline: image attachment import into app-private storage, message-level attachment persistence, image attachment mapping into LLM messages, and OpenAI-compatible multimodal payload support.
+- Memory system: realtime consolidation, layered recall, conflict-aware fact governance, ranked lookup, and in-app fact / summary management.
 
 ## What Is Intentionally Limited Right Now
 
@@ -39,6 +40,7 @@ English: `DEVELOPMENT_PROGRESS_AND_ROADMAP.md` | 中文：`DEVELOPMENT_PROGRESS_
 - Settings page moved from direct persistence-flow projection to a baseline/draft editor model with reset/save behavior.
 - Tool semantics now distinguish local orchestration from local read-only execution.
 - `ToolRegistry` visibility and definition queries were converted to suspend APIs so cached dynamic tool lookups no longer require internal `runBlocking` bridges.
+- Memory was upgraded with realtime post-turn refresh, layered recall, conflict-aware fact replacement, ranked lookup, and Memory-screen management actions for facts and summaries.
 - High-complexity integration coverage now spans:
   - dynamic MCP tools plus workspace-restricted mode
   - `delegate_task` plus workspace artifact writeback
@@ -47,5 +49,6 @@ English: `DEVELOPMENT_PROGRESS_AND_ROADMAP.md` | 中文：`DEVELOPMENT_PROGRESS_
 ## Recommended Next Phase
 
 1. Polish documentation and debug wording so project state is self-explanatory without chat history.
-2. Harden MCP further with auth/timeout/health-check/backoff support.
-3. Decide whether to stop at the Android-native core or continue toward channels / bridge / CLI parity with the broader Python ecosystem.
+2. Add clearer memory provenance / confidence presentation and optional richer correction workflows.
+3. Harden MCP further with auth/timeout/health-check/backoff support.
+4. Decide whether to stop at the Android-native core or continue toward channels / bridge / CLI parity with the broader Python ecosystem.

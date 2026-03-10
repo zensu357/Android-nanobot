@@ -14,6 +14,9 @@ English: `CURRENT_STATUS.md` | 中文：`CURRENT_STATUS.zh-CN.md`
 ## Stable Capabilities
 
 - Persistent chat sessions with memory-aware prompting
+- Realtime memory consolidation with worker fallback
+- Layered memory recall with session summaries, current-session facts, and long-term facts
+- Conflict-aware fact replacement, ranked memory lookup, and in-app fact / summary management UI
 - Workspace-restricted mode with policy-enforced tool access
 - Local orchestration through `delegate_task`
 - Background heartbeat and reminder automation
@@ -24,6 +27,7 @@ English: `CURRENT_STATUS.md` | 中文：`CURRENT_STATUS.zh-CN.md`
 
 - MCP still needs stronger production hardening for auth, timeout, health-check, and retry/backoff.
 - Dynamic MCP cache freshness is not yet surfaced with timestamps or "last successful refresh" metadata.
+- Memory still lacks explicit confidence / provenance scoring beyond session linkage, timestamps, and lightweight conflict heuristics.
 - Multimodal support is still image-only and only one provider path is wired for payload delivery.
 - Channels / bridge / CLI ecosystem features are not implemented.
 
@@ -38,5 +42,6 @@ English: `CURRENT_STATUS.md` | 中文：`CURRENT_STATUS.zh-CN.md`
 ## Next Directions
 
 1. Continue MCP hardening.
-2. Improve multimodal provider coverage and diagnostics.
-3. Do final UX/documentation polish before any ecosystem expansion.
+2. Add richer memory provenance / confidence signals and optional manual correction workflows.
+3. Improve multimodal provider coverage and diagnostics.
+4. Do final UX/documentation polish before any ecosystem expansion.

@@ -12,6 +12,9 @@
 ## 稳定能力
 
 - 持久化聊天会话与 memory-aware prompting
+- 实时 memory consolidation，并保留 worker 周期兜底
+- 分层 memory 召回：session summary、当前会话 facts、长期 facts
+- 冲突感知的 fact 替换、排序式 memory lookup，以及内置 fact / summary 管理 UI
 - 由策略层强制执行的 workspace-restricted mode
 - 通过 `delegate_task` 实现的本地编排能力
 - Heartbeat 与 reminder 后台自动化
@@ -22,7 +25,8 @@
 
 - MCP 仍需更强的生产级硬化，包括 auth、timeout、health-check 和 retry/backoff。
 - 动态 MCP 缓存的新鲜度还没有通过时间戳或“上次成功刷新时间”显式展示出来。
-- 多模态目前仍然是 image-only，且只有一条 provider payload 路径已接通。
+- Memory 目前还缺少更明确的置信度 / 来源说明；现在主要依赖 session 关联、时间戳与轻量冲突规则。
+- 多模态仍然只覆盖图片，且目前只有一条 provider 路径接通 payload 投递。
 - Channels / bridge / CLI 生态能力尚未实现。
 
 ## 术语说明
@@ -36,5 +40,6 @@
 ## 下一阶段方向
 
 1. 继续硬化 MCP。
-2. 扩展 multimodal 的 provider 覆盖与诊断信息。
-3. 在继续扩生态层前，完成最终的 UX / 文档收口整理。
+2. 补充更清晰的 memory 来源说明 / 置信度展示，以及可选的更丰富纠正流程。
+3. 扩展 multimodal 的 provider 覆盖与诊断信息。
+4. 做最终一轮 UX / 文档打磨，再决定是否扩展生态层。

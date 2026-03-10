@@ -100,15 +100,19 @@ On macOS or Linux, use `./gradlew` instead of `./gradlew.bat`.
 
 - Single-module Android application
 - `core/`: agent loop, providers, tools, MCP, workspace, web access, workers, persistence models
+- Memory architecture: realtime consolidation, session summaries, long-term facts, conflict-aware fact governance, and ranked lookup
 - `data/`: repository implementations and mappers
 - `domain/`: repository interfaces and use cases
-- `feature/`: Compose screens and ViewModels
+- `feature/`: Compose screens and ViewModels, including in-app memory management for facts and summaries
 - `navigation/`: app routes and navigation graph
 
 ## Current Capabilities
 
 - Persistent chat sessions with Room-backed history
 - Prompt presets, runtime metadata, and memory-aware prompting
+- Realtime memory refresh after completed turns, with periodic worker fallback
+- Layered memory recall across session summaries, current-session facts, and long-term user facts
+- Conflict-aware memory fact updates, ranked memory lookup, and in-app memory editing / deletion / summary rebuild UI
 - Policy-enforced `workspace-restricted mode`
 - Workspace sandbox read/write tools inside `workspace:/`
 - Public web read-only tools with network safety checks
