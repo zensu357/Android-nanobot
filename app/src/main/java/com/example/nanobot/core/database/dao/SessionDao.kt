@@ -1,9 +1,8 @@
 package com.example.nanobot.core.database.dao
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import com.example.nanobot.core.database.entity.SessionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -24,6 +23,6 @@ interface SessionDao {
     @Query("DELETE FROM sessions WHERE updatedAt < :cutoffMillis")
     suspend fun deleteSessionsOlderThan(cutoffMillis: Long)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsert(session: SessionEntity)
 }

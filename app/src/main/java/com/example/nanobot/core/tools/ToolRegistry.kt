@@ -64,6 +64,7 @@ class ToolRegistry(
     ): List<LlmToolDefinitionDto> {
         return visibleTools(config, runContext).map { tool ->
             LlmToolDefinitionDto(
+                type = "function",
                 function = LlmToolFunctionDto(
                     name = tool.name,
                     description = tool.description,

@@ -65,6 +65,7 @@ fun ProviderChatResult.toAssistantMessage(sessionId: String): ChatMessage {
 
 private fun ToolCallRequest.toDto(): LlmToolCallDto = LlmToolCallDto(
     id = id,
+    type = "function",
     function = com.example.nanobot.core.model.LlmToolCallFunctionDto(
         name = name,
         arguments = arguments.toString()

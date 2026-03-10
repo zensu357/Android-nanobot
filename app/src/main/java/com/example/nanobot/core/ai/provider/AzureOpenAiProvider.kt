@@ -37,7 +37,7 @@ class AzureOpenAiProvider @Inject constructor(
                 temperature = route.resolvedTemperature
             )
         )
-        val endpoint = route.effectiveBaseUrl.ensureTrailingSlash() +
+        val endpoint = route.effectiveBaseUrl.cleanCustomBaseUrl() +
             "openai/deployments/${route.resolvedModel}/chat/completions?api-version=2024-10-21"
         val messagesElement = networkJson.encodeToJsonElement(
             ListSerializer(LlmMessageDto.serializer()),
@@ -65,7 +65,16 @@ class AzureOpenAiProvider @Inject constructor(
             .post(networkJson.encodeToString(payload).toRequestBody("application/json".toMediaType()))
             .build()
 
-        OkHttpClient.Builder().build().newCall(httpRequest).execute().use { response ->
+        val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
+            level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+        }
+
+        OkHttpClient.Builder()
+            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor(loggingInterceptor)
+            .build().newCall(httpRequest).execute().use { response ->
             if (!response.isSuccessful) {
                 return@withContext ProviderChatResult(
                     content = "Azure OpenAI API error ${response.code}: ${response.body?.string().orEmpty()}",
@@ -99,7 +108,12 @@ class AzureOpenAiProvider @Inject constructor(
     }
 }
 
-private fun String.ensureTrailingSlash(): String = if (endsWith("/")) this else "$this/"
+private fun String.cleanCustomBaseUrl(): String {
+    var url = this.trim()
+    url = url.removeSuffix("/chat/completions/")
+    url = url.removeSuffix("/chat/completions")
+    return if (url.endsWith('/')) url else "$url/"
+}
 
 private val networkJson = Json {
     ignoreUnknownKeys = true

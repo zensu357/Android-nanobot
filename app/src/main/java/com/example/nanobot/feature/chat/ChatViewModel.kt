@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -35,10 +34,6 @@ class ChatViewModel @Inject constructor(
     private val uiStateInternal = MutableStateFlow(ChatUiState())
     private var currentConfig: AgentConfig = AgentConfig()
     private var runningJob: Job? = null
-
-    private val config = settingsDataStore.configFlow
-        .onEach { currentConfig = it }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AgentConfig())
 
     private val currentSession = sessionRepository.observeCurrentSession()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -75,6 +70,11 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             currentSession.collect { session ->
                 updateState { copy(sessionTitle = session?.title ?: "New Chat") }
+            }
+        }
+        viewModelScope.launch {
+            settingsDataStore.configFlow.collect { config ->
+                currentConfig = config
             }
         }
     }

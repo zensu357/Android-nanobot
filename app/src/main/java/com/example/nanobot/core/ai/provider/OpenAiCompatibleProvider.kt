@@ -71,7 +71,14 @@ class OpenAiCompatibleProvider @Inject constructor(
     }
 
     private fun createApi(config: AgentConfig, route: ResolvedProviderRoute): LlmApi {
+        val loggingInterceptor = okhttp3.logging.HttpLoggingInterceptor().apply {
+            level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+        }
         val client = OkHttpClient.Builder()
+            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->
                 val builder: Request.Builder = chain.request().newBuilder()
                     .header("Content-Type", "application/json")
@@ -90,7 +97,7 @@ class OpenAiCompatibleProvider @Inject constructor(
             .build()
 
         return Retrofit.Builder()
-            .baseUrl(route.effectiveBaseUrl.ensureTrailingSlash())
+            .baseUrl(route.effectiveBaseUrl.cleanCustomBaseUrl())
             .client(client)
             .addConverterFactory(networkJson.asConverterFactory("application/json".toMediaType()))
             .build()
@@ -128,7 +135,12 @@ private suspend fun LlmMessageDto.withResolvedAttachments(
     return copy(content = JsonArray(parts), attachments = attachments)
 }
 
-private fun String.ensureTrailingSlash(): String = if (endsWith("/")) this else "$this/"
+private fun String.cleanCustomBaseUrl(): String {
+    var url = this.trim()
+    url = url.removeSuffix("/chat/completions/")
+    url = url.removeSuffix("/chat/completions")
+    return if (url.endsWith('/')) url else "$url/"
+}
 
 private val networkJson = Json {
     ignoreUnknownKeys = true

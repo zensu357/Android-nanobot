@@ -56,6 +56,6 @@ class ProviderRequestSanitizerTest {
 
         val sanitized = sanitizer.sanitize(request)
 
-        assertEquals("(empty)", sanitized.messages.first().content?.toString()?.trim('"'))
+        assertEquals(" ", sanitized.messages.first().content?.toString()?.trim('"'))
     }
 }

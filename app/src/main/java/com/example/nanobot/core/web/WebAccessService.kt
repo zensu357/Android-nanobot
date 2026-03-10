@@ -128,8 +128,9 @@ class WebAccessService @Inject constructor(
 
     private fun buildHttpClient(proxyValue: String): OkHttpClient {
         val builder = OkHttpClient.Builder()
-            .connectTimeout(Duration.ofSeconds(15))
-            .readTimeout(Duration.ofSeconds(20))
+            .connectTimeout(Duration.ofSeconds(30))
+            .readTimeout(Duration.ofSeconds(60))
+            .writeTimeout(Duration.ofSeconds(30))
             .followRedirects(false)
             .followSslRedirects(false)
             .dns(safeDns)

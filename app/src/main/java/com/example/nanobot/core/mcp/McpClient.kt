@@ -34,7 +34,11 @@ class HttpMcpClient @Inject constructor() : McpClient {
         explicitNulls = false
     }
 
-    private val httpClient = OkHttpClient.Builder().build()
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     override suspend fun discoverTools(server: McpServerDefinition): List<McpToolDescriptor> = withContext(Dispatchers.IO) {
         validateEndpoint(server)

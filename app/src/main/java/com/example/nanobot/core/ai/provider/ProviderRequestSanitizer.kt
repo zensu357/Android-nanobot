@@ -52,11 +52,11 @@ class ProviderRequestSanitizer @Inject constructor() {
         hasToolCalls: Boolean
     ): JsonElement? {
         return when (content) {
-            null, JsonNull -> if (role == "assistant" && hasToolCalls) null else JsonPrimitive("(empty)")
+            null, JsonNull -> if (role == "assistant" && hasToolCalls) null else JsonPrimitive(" ")
             is JsonPrimitive -> {
                 val text = content.contentOrNull
                 if (text.isNullOrEmpty()) {
-                    if (role == "assistant" && hasToolCalls) null else JsonPrimitive("(empty)")
+                    if (role == "assistant" && hasToolCalls) null else JsonPrimitive(" ")
                 } else {
                     content
                 }
@@ -64,7 +64,7 @@ class ProviderRequestSanitizer @Inject constructor() {
             is JsonArray -> {
                 val filtered = content.filterNot { item -> isEmptyTextBlock(item) }
                 if (filtered.isEmpty()) {
-                    if (role == "assistant" && hasToolCalls) null else JsonPrimitive("(empty)")
+                    if (role == "assistant" && hasToolCalls) null else JsonPrimitive(" ")
                 } else {
                     JsonArray(filtered)
                 }

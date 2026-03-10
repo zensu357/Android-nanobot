@@ -6,7 +6,7 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface LlmApi {
-    @POST("v1/chat/completions")
+    @POST("chat/completions")
     suspend fun createChatCompletion(
         @Body request: LlmChatRequest
     ): LlmChatResponse

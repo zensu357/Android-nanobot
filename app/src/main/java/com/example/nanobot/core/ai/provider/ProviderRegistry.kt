@@ -96,7 +96,7 @@ object ProviderRegistry {
             name = "openai",
             keywords = setOf("openai", "gpt"),
             displayName = "OpenAI",
-            defaultBaseUrl = "https://api.openai.com/",
+            defaultBaseUrl = "https://api.openai.com/v1/",
             requiresOpenAiChatEndpoint = true,
             supportsImageAttachments = true
         ),
@@ -210,8 +210,8 @@ object ProviderRegistry {
         val metadataSpec = explicitSpec ?: detectedGateway ?: hintedSpec ?: findByModel(normalizedModel) ?: findByName("custom")!!
         val resolvedProviderType = explicitSpec?.providerType ?: detectedGateway?.providerType ?: providerType
         val resolvedBaseUrl = baseUrl.trim().ifBlank {
-            metadataSpec.defaultBaseUrl ?: "https://api.openai.com/"
-        }.ensureTrailingSlash()
+            metadataSpec.defaultBaseUrl ?: "https://api.openai.com/v1/"
+        }.cleanCustomBaseUrl()
         val resolvedModel = if (metadataSpec.stripLeadingProviderPrefix && '/' in normalizedModel) {
             normalizedModel.substringAfterLast('/')
         } else {
@@ -234,4 +234,9 @@ object ProviderRegistry {
     }
 }
 
-private fun String.ensureTrailingSlash(): String = if (endsWith('/')) this else "$this/"
+private fun String.cleanCustomBaseUrl(): String {
+    var url = this.trim()
+    url = url.removeSuffix("/chat/completions/")
+    url = url.removeSuffix("/chat/completions")
+    return if (url.endsWith('/')) url else "$url/"
+}
