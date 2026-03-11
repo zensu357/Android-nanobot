@@ -75,6 +75,7 @@ class PromptComposerDiagnosticsTest {
         assertEquals(true, snapshot.runtimeDiagnosticsEnabled)
         assertEquals(2, snapshot.historyOriginalCount)
         assertTrue(snapshot.historyKeptCount >= 1)
+        assertTrue(snapshot.memoryScratchEntryCount >= 1)
     }
 
     private class FakeMemoryRepository : MemoryRepository {

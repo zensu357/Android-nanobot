@@ -2,6 +2,8 @@ package com.example.nanobot.core.ai
 
 import com.example.nanobot.core.model.MemoryFact
 import com.example.nanobot.core.model.MemorySummary
+import com.example.nanobot.core.model.ChatMessage
+import com.example.nanobot.core.model.MessageRole
 import com.example.nanobot.domain.repository.MemoryRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -52,14 +54,23 @@ class MemoryExposurePlannerTest {
             )
         )
 
-        val context = planner.buildContext("session-1", "Please refactor this Kotlin Android screen.")
+        val context = planner.buildContext(
+            "session-1",
+            "Please refactor this Kotlin Android screen.",
+            recentHistory = listOf(
+                ChatMessage(sessionId = "session-1", role = MessageRole.USER, content = "We are cleaning up an Android screen."),
+                ChatMessage(sessionId = "session-1", role = MessageRole.ASSISTANT, content = "Understood.")
+            )
+        )
 
         assertNotNull(context)
         assertTrue(context.contains("Session summary:"))
+        assertTrue(context.contains("Scratch session memory:"))
         assertTrue(context.contains("Relevant current session facts:"))
         assertTrue(context.contains("Relevant long-term facts:"))
         assertTrue(context.contains("The current task is a Kotlin Android refactor."))
         assertTrue(context.contains("The user prefers concise Kotlin answers."))
+        assertTrue(context.contains("Latest user request:"))
         assertFalse(context.contains("gardening"))
     }
 

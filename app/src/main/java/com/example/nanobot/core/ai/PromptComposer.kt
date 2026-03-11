@@ -34,9 +34,9 @@ class PromptComposer @Inject constructor(
         )
         val messages = mutableListOf<LlmMessageDto>()
         val memoryExposure = if (config.enableMemory) {
-            memoryExposurePlanner.buildWithDiagnostics(runContext.sessionId, latestUserInput)
+            memoryExposurePlanner.buildWithDiagnostics(runContext.sessionId, latestUserInput, history)
         } else {
-            MemoryExposureResult(null, false, 0, 0)
+            MemoryExposureResult(null, false, 0, 0, 0)
         }
         val systemPrompt = systemPromptBuilder.buildWithDiagnostics(
             config = config,
@@ -73,6 +73,7 @@ class PromptComposer @Inject constructor(
                 catalogSkillIds = systemPrompt.catalogSkillIds,
                 expandedSkillIds = systemPrompt.expandedSkillIds,
                 memorySummaryIncluded = memoryExposure.summaryIncluded,
+                memoryScratchEntryCount = memoryExposure.scratchEntryCount,
                 memorySessionFactCount = memoryExposure.sessionFactCount,
                 memoryLongTermFactCount = memoryExposure.longTermFactCount,
                 runtimeDiagnosticsEnabled = runtimeContext.diagnosticsEnabled,

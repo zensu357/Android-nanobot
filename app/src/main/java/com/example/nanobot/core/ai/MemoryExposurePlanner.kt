@@ -1,28 +1,36 @@
 package com.example.nanobot.core.ai
 
 import com.example.nanobot.core.memory.MemorySearchScorer
+import com.example.nanobot.core.model.ChatMessage
 import com.example.nanobot.core.model.MemoryFact
 import com.example.nanobot.core.model.MemorySummary
+import com.example.nanobot.core.model.MessageRole
 import com.example.nanobot.domain.repository.MemoryRepository
 import javax.inject.Inject
 
 class MemoryExposurePlanner @Inject constructor(
     private val memoryRepository: MemoryRepository
 ) {
-    suspend fun buildContext(sessionId: String, latestUserInput: String): String? {
-        return buildWithDiagnostics(sessionId, latestUserInput).context
+    suspend fun buildContext(sessionId: String, latestUserInput: String, recentHistory: List<ChatMessage> = emptyList()): String? {
+        return buildWithDiagnostics(sessionId, latestUserInput, recentHistory).context
     }
 
-    suspend fun buildWithDiagnostics(sessionId: String, latestUserInput: String): MemoryExposureResult {
+    suspend fun buildWithDiagnostics(
+        sessionId: String,
+        latestUserInput: String,
+        recentHistory: List<ChatMessage> = emptyList()
+    ): MemoryExposureResult {
         val summary = memoryRepository.getSummaryForSession(sessionId)
         val allFacts = memoryRepository.getFacts()
+        val scratchEntries = buildScratchEntries(recentHistory, latestUserInput)
         val sessionFacts = selectSessionFacts(sessionId, latestUserInput, allFacts)
         val relevantLongTermFacts = selectLongTermFacts(sessionId, latestUserInput, allFacts)
 
-        if (summary == null && sessionFacts.isEmpty() && relevantLongTermFacts.isEmpty()) {
+        if (summary == null && scratchEntries.isEmpty() && sessionFacts.isEmpty() && relevantLongTermFacts.isEmpty()) {
             return MemoryExposureResult(
                 context = null,
                 summaryIncluded = false,
+                scratchEntryCount = 0,
                 sessionFactCount = 0,
                 longTermFactCount = 0
             )
@@ -33,6 +41,11 @@ class MemoryExposurePlanner @Inject constructor(
             summary?.let {
                 appendLine("Session summary:")
                 appendLine(formatSummary(it))
+            }
+            if (scratchEntries.isNotEmpty()) {
+                appendLine()
+                appendLine("Scratch session memory:")
+                scratchEntries.forEach { appendLine("- $it") }
             }
             if (sessionFacts.isNotEmpty()) {
                 appendLine()
@@ -48,9 +61,27 @@ class MemoryExposurePlanner @Inject constructor(
         return MemoryExposureResult(
             context = context,
             summaryIncluded = summary != null,
+            scratchEntryCount = scratchEntries.size,
             sessionFactCount = sessionFacts.size,
             longTermFactCount = relevantLongTermFacts.size
         )
+    }
+
+    private fun buildScratchEntries(recentHistory: List<ChatMessage>, latestUserInput: String): List<String> {
+        val recentUserMessages = recentHistory
+            .asReversed()
+            .filter { it.role == MessageRole.USER && !it.content.isNullOrBlank() }
+            .mapNotNull { it.content?.trim()?.takeIf { value -> value.isNotBlank() } }
+            .distinct()
+            .take(MAX_SCRATCH_HISTORY)
+            .reversed()
+        val latest = latestUserInput.trim().takeIf { it.isNotBlank() }
+        return buildList {
+            latest?.let { add("Latest user request: ${it.take(SCRATCH_ENTRY_MAX_CHARS)}") }
+            recentUserMessages.filter { latest == null || it != latest }.forEach { message ->
+                add("Recent session context: ${message.take(SCRATCH_ENTRY_MAX_CHARS)}")
+            }
+        }.take(MAX_SCRATCH_ENTRIES)
     }
 
     private fun selectSessionFacts(sessionId: String, latestUserInput: String, facts: List<MemoryFact>): List<MemoryFact> {
@@ -101,6 +132,9 @@ class MemoryExposurePlanner @Inject constructor(
     }
 
     private companion object {
+        const val MAX_SCRATCH_ENTRIES = 3
+        const val MAX_SCRATCH_HISTORY = 3
+        const val SCRATCH_ENTRY_MAX_CHARS = 180
         const val MAX_SESSION_FACTS = 2
         const val FALLBACK_SESSION_FACTS = 1
         const val MAX_LONG_TERM_FACTS = 3

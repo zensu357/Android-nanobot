@@ -16,6 +16,7 @@ data class SystemPromptBuildResult(
 data class MemoryExposureResult(
     val context: String?,
     val summaryIncluded: Boolean,
+    val scratchEntryCount: Int,
     val sessionFactCount: Int,
     val longTermFactCount: Int
 )
@@ -38,6 +39,7 @@ data class PromptDiagnosticsSnapshot(
     val catalogSkillIds: List<String>,
     val expandedSkillIds: List<String>,
     val memorySummaryIncluded: Boolean,
+    val memoryScratchEntryCount: Int,
     val memorySessionFactCount: Int,
     val memoryLongTermFactCount: Int,
     val runtimeDiagnosticsEnabled: Boolean,

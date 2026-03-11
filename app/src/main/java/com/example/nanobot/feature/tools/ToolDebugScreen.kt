@@ -97,7 +97,7 @@ fun ToolDebugScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Memory summary/session/long-term: ${diagnostics.memorySummaryIncluded} / ${diagnostics.memorySessionFactCount} / ${diagnostics.memoryLongTermFactCount}",
+                                text = "Memory summary/scratch/session/long-term: ${diagnostics.memorySummaryIncluded} / ${diagnostics.memoryScratchEntryCount} / ${diagnostics.memorySessionFactCount} / ${diagnostics.memoryLongTermFactCount}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
